@@ -1,0 +1,6 @@
+  openssl req -newkey rsa:2048 -x509 -keyout serverkey.pem -out servercert.pem -days 3650
+  openssl pkcs12 -export -in servercert.pem -inkey serverkey.pem identity.p12 -name "Server1"
+   openssl pkcs12 -export -in servercert.pem -inkey serverkey.pem -out identity.p12 -name "Server1"
+  keytool -importkeystore -destkeystore serveridentity.jks -deststorepass password -srckeystore identity.p12 -srcstoretype pkcs12 -srcstorepass password
+  keytool -import -file servercert.pem -keystore trust.jks -storepass password
+ 
