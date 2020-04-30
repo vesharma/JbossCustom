@@ -788,3 +788,60 @@ List logs available for a Jboss instance server-one in master host
 Read last 5 lines of server.log of server-one
 /host=master/server=server-one/subsystem=logging:read-log-file(name=server.log,lines=5,skip=0)
 Make a tail showing the last 10 lines of server-one's server.log
+
+
+
+------------------------
+
+Useful CLI scripts in Domain mode
+mastertheboss.com/jboss-server/jboss-script/useful-cli-scripts-in-domain-mode
+When running in Domain mode using the CLI can be tricky as you have to understand where your resources are located in the application server tree. Let's see some practical examples:
+
+How to configure a resource in a Domain
+
+You have to reference the profile you are using. Example:
+
+/profile=full/subsystem=ejb3/thread-pool=default:write-attribute(name=max-threads,value=10)
+How to reach a resource available on a server
+
+Some resources (notably datasources and JMS destinations) produce statistics on the server where they are available. Thus you have to reach the server node through the host:
+
+/host=master/server=server-one/subsystem=datasources/data-source=MySQLDS/statistics=pool/
+:read-resource(recursive=false,include-runtime=true)
+/host=master/server=server-one/subsystem=messaging/hornetq-server=default/jms-queue=MY_QUEUE/
+:read-resource(recursive-depth=0,include-runtime=true,include-defaults=false)
+Handling server start/stop/restart/reload
+
+How to start all server groups:
+
+/server-group=main-server-group:start-servers
+How to restart all server groups:
+
+/server-group=main-server-group:restart-servers
+How to stop all server groups:
+
+/server-group=main-server-group:stop-servers
+How to reload all server groups:
+
+/server-group=main-server-group:reload-servers
+A practical script for shutting down a domain (remember shut down the slave host at first!)
+
+./jboss-cli.sh --connect controller=192.168.10.1:9990 /host=slave:shutdown
+./jboss-cli.sh --connect controller=192.168.10.1:9990 /host=master:shutdown
+How to un-assign an application from a Server Group
+
+1
+/server-group=main-server-group/deployment=web-demo.war:remove
+How to remove an application from the Repository
+
+1
+/deployment=web-demo.war:remove
+A practical bash script for deploying one application (pass the application as argument)
+
+./jboss-cli.sh --connect controller=192.168.10.1:9990 --commands="undeploy $1 
+--all-relevant-server-groups"
+And to undeploy the application (pass the application as argument)
+
+./jboss-cli.sh --connect controller=192.168.10.1:9990 --commands="deploy $1 
+--server-groups=main-server-group"
+
