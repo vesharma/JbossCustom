@@ -1,0 +1,790 @@
+https://github.com/juliojsb/jboss-cli-snippets-compilation
+https://jbossorg.github.io/wildflysite/blog/2017/10/10/Embedded-Host-Controller/
+
+
+
+jbossorg.github.io/wildflysite/blog/2017/10/10/Embedded-Host-Controller
+Running an Embedded WildFly Host Controller in the CLI
+kwills 2017-10-09
+
+WildFly supports running a standalone server in Offline mode as an embedded server. An analogous capability has been added for domain mode in the form of running an offline host controller. This article discusses some of the details and possible applications of this feature.
+
+Introduction
+For those not familiar with the existing embedded standalone server, see: Offline mode Running an Embedded WildFly 9 Server in the CLI · WildFly. One of the major use cases of this feature was to allow local administration of a WIldFly / JBoss EAP instance without requiring a socket based connection, or opening any local ports but still enabling configuration and administration operations. The embedded approach also allows for a fast boot that will allow multiple concurrent running instances to co-exist without configuring any additional socket offsets or interfaces to avoid port conflicts etc.
+
+Using jboss-cli.sh and the embed-host-controller command enables a fast and flexible means of configuring host controller instances and servers.
+
+Embedded Host Controller
+In a similar way to the standalone embed-server command, the embed-host-controller command is provided, to start an embedded host controller running in the CLI. This host controller is started in admin-only mode, and no servers are started. [See below for more details on admin-only restrictions].
+
+Starting an embedded Host Controller:
+$ ./bin/jboss-cli.sh
+
+You are disconnected at the moment. Type 'connect' to connect to the server or 'help' for the list of supported commands.
+[disconnected /] embed-host-controller --std-out=echo
+11:07:46,723 INFO  [org.jboss.modules] (AeshProcess: 1) JBoss Modules version 1.6.0.Final
+11:07:46,825 INFO  [org.jboss.msc] (AeshProcess: 1) JBoss MSC version 1.2.7.SP1
+11:07:46,870 INFO  [org.jboss.as] (MSC service thread 1-7) WFLYSRV0049: WildFly Full 11.0.0 (WildFly Core 3.0.1.Final) starting
+[ Note: some startup output omitted for brevity. ]
+11:07:48,845 INFO  [org.jboss.as] (Controller Boot Thread) WFLYSRV0025: WildFly Full 11.0.0 (WildFly Core 3.0.1.Final) (Host Controller) started in 2105ms - Started 56 of 61 services (18 services are lazy, passive or on-demand)
+
+[domain@embedded /] ls -l
+ATTRIBUTE                VALUE           TYPE
+domain-organization      undefined       STRING
+launch-type              EMBEDDED        STRING
+local-host-name          master          STRING
+management-major-version 5               INT
+management-micro-version 0               INT
+management-minor-version 0               INT
+name                     Unnamed Domain  STRING
+namespaces               []              OBJECT
+process-type             Host Controller STRING
+product-name             WildFly Full    STRING
+product-version          11.0.0          STRING
+release-codename         Kenny           STRING
+release-version          3.0.1.Final     STRING
+schema-locations         []              OBJECT
+
+CHILD                     MIN-OCCURS MAX-OCCURS
+core-service              n/a        n/a
+deployment                n/a        n/a
+deployment-overlay        n/a        n/a
+extension                 n/a        n/a
+host                      n/a        n/a
+host-exclude              n/a        n/a
+interface                 n/a        n/a
+management-client-content n/a        n/a
+path                      n/a        n/a
+profile                   n/a        n/a
+server-group              n/a        n/a
+socket-binding-group      n/a        n/a
+system-property           n/a        n/a
+The non-modular client may also be used from the bin/client WildFly distribution:
+
+$ java -jar bin/client/jboss-cli-client.jar
+You are disconnected at the moment. Type 'connect' to connect to the server or 'help' for the list of supported commands.
+[disconnected /] embed-host-controller --jboss-home=/wildfly-11.0.0
+Warning! The CLI is running in a non-modular environment and cannot load commands from management extensions.
+[domain@embedded /] cd /host=master/server-config=server-one
+[domain@embedded server-config=server-one] ls -l
+ATTRIBUTE                            VALUE             TYPE
+auto-start                           true              BOOLEAN
+cpu-affinity                         undefined         STRING
+group                                main-server-group STRING
+name                                 server-one        STRING
+priority                             undefined         INT
+socket-binding-default-interface     undefined         STRING
+socket-binding-group                 undefined         STRING
+socket-binding-port-offset           0                 INT
+status                               STOPPED           STRING
+update-auto-start-with-server-status false             BOOLEAN
+
+CHILD           MIN-OCCURS MAX-OCCURS
+interface       n/a        n/a
+jvm             n/a        n/a
+path            n/a        n/a
+ssl             n/a        n/a
+system-property n/a        n/a
+[domain@embedded server-config=server-one]
+See Modular vs Non-Modular Classloading and JBOSS_HOME in the original embedded server news article for details.
+
+Executing commands:
+[domain@embedded /]  /host=master/interface=public:write-attribute(name=inet-address, value=127.0.0.1)
+{
+    "outcome" => "success",
+    "result" => undefined,
+    "server-groups" => undefined,
+    "response-headers" => {"process-state" => "reload-required"}
+}
+Reloading:
+[domain@embedded /] reload --host=master --admin-only=true
+11:17:20,092 INFO  [org.jboss.as] (Controller Boot Thread) WFLYSRV0025: WildFly Full 11.0.0 (WildFly Core 3.0.1.Final) (Host Controller) started in 279ms - Started 56 of 61 services (18 services are lazy, passive or on-demand)
+[domain@embedded /]
+Note that currently, the embedded host controller may only be started / reloaded in admin-only mode. In domain mode, servers are started and stopped via use of the process controller which is not currently supported as part of embedded mode.
+
+Stopping:
+[domain@embedded /] stop-embedded-host-controller
+11:08:29,925 INFO  [org.jboss.as] (MSC service thread 1-7) WFLYSRV0050: WildFly Full 11.0.0 (WildFly Core 3.0.1.Final) stopped in 13ms
+Command usage:
+The embed-host-controller command has several options that behave in the same way as the previously mentioned standalone embedded server, which will not be discussed again here. The relevant embed-host-controller parameters are:
+
+-c                - Name of the domain configuration file to use
+                     (default is "domain.xml")
+                     (Same as --domain-config)
+
+--domain-config   - Name of the domain configuration file to use
+                     (default is "domain.xml")
+                     (Same as -c)
+
+--host-config     - Name of the host configuration file to use
+                     (default is "host.xml")
+As mentioned above, --jboss-home, --std-out and --timeout may also be provided and function in the same manner as the embed-server command. The configuration files mentioned above (domain.xml, host.xml) above should be located in the $JBOSS_HOME/domain/configuration directory (or under the location pointed to by the system property jboss.domain.config.dir.) [See Command Line Properties for additional details on those properties.]
+
+For example, to start an embedded host controller with configuration files contained in the otherdomain/configuration directory:
+
+[wildfly-11]$ ./bin/jboss-cli.sh -Djboss.domain.config.dir=/wildfly-11/otherdomain/configuration
+You are disconnected at the moment. Type 'connect' to connect to the server or 'help' for the list of supported commands.
+[disconnected /] embed-host-controller --std-out=echo
+11:26:44,122 INFO  [org.jboss.as] (Controller Boot Thread) WFLYSRV0025: WildFly Full 11.0.0 (WildFly Core 3.0.1.Final) (Host Controller) started in 1894ms - Started 56 of 61 services (18 services are lazy, passive or on-demand)
+[domain@embedded /]
+Configuration may then proceed and will be persisted to the otherdomain/configuration directory. This directory must already exist and contain base copies of the required configuration files (host.xml, domain.xml etc.).
+
+Scripted configuration
+The embedded host controller may be useful for configuration from a prepared file of scripted CLI commands. For example:
+
+$ cat commands.cli
+embed-host-controller
+/server-group=main-server-group:write-attribute(name=socket-binding-port-offset, value=100)
+/host=master/server-config=server-one:write-attribute(name=auto-start, value=false)
+deploy --all-server-groups test.war
+stop-embedded-host-controller
+
+$ ./bin/jboss-cli.sh --file=commands.cli
+{
+    "outcome" => "success",
+    "result" => undefined,
+    "server-groups" => undefined
+}
+This approach may be used for a variety of setup and configuration tasks, for example setting up unit or integration tests quickly using the embedded host controller, then restarting in domain mode using domain.sh may require less time than starting the host controller normally using domain.sh, performing configuration and deployment etc, then restarting.
+
+Other examples
+Set server socket-binding-port-offset
+In order to allow more than one running instance on the same host, a common configuration for testing (or any scenario needing to run a domain controller and a slave host controller (with servers) on the same host), a socket-binding-port-offset is commonly used. The slave host is configured to have a port offset so that the ports already in use by the domain controller’s servers do not conflict with those of the slave.
+
+[domain@embedded /] /server-group=main-server-group:write-attribute(name=socket-binding-port-offset, value=100)
+{
+    "outcome" => "success",
+    "result" => undefined,
+    "server-groups" => undefined
+}
+Configure connection to remote domain controller
+When configuring a slave host controller, configure the connection to the domain controller.
+
+[domain@embedded /] /host=master:write-remote-domain-controller(host=remotedc.somedomain.tld, security-realm=ManagementRealm)
+{
+    "outcome" => "success",
+    "result" => undefined,
+    "server-groups" => undefined,
+    "response-headers" => {"process-state" => "reload-required"}
+}
+System property
+This can be useful as an initial configuration step before the host controller is started with domain.sh:
+
+[domain@embedded /] /server-group=main-server-group/system-property=foo:add(value=bar)
+{
+    "outcome" => "success",
+    "result" => undefined,
+    "server-groups" => undefined
+}
+Future Direction
+In the future we’d like to allow for starting the embedded host controller with some additional features, such as empty configurations in host and domain configuration files (similar to standalone embedded), and also re-examine the meaning and usage of --admin-only in the context of the embedded host controller.
+
+
+----------------------
+
+Command Line Interface |JBoss.org Content Archive (Read Only)
+developer.jboss.org/wiki/CommandLineInterface
+The AS7 Command Line Interface (CLI) is a command line management tool for the AS 7 domain or a standalone server. It allows a user to connect to the AS7 domain controller or a standalone server and execute management operations available through the AS7 detyped management model. Depending on the operation system, the CLI is launched using jboss-admin.sh or jboss-admin.bat located in the AS7 bin directory.
+
+Features
+The CLI features include:
+
+connect to the specific controller or server instance by specifying the host and the port;
+send operation requests (providing the managed component's address, attribute or operation name and parameters) following the AS7 detyped management model;
+view the available managed components, their attributes and operations;
+tab-completion for commands and operation requests;
+history of the executed commands and operation requests;
+deploy and undeploy standard packages at runtime in standalone and domain modes;
+CLI deployment archives;
+batch mode;
+non-interactive mode;
+generic resource type commands and custom commands;
+GUI mode;
+CLI public API;
+system properties in operations and commands;
+try-catch-finally control flow;
+if-else control flow
+Single jar for remote clients
+Advanced CLI scripting with Groovy, Rhino, Jython, etc.
+Commands
+There are commands and operations. They are different. Operations are considered a low level but comprehensive way to manage the AS controller, i.e. if it can't be done with operations it can't be done in any other way.
+
+Commands, on the other hand, are more user-friendly in syntax, although most of them still translate into operation requests and some of them even into a few composite operation requests, i.e. commands also simplify some management operations from the user's point of view.
+
+To see all the list of all the supported commands enter command help --commands. Another way to list all the supported commands is to press the tab key at the command line prompt which will trigger the tab-completion for the commands. The list of the available commands depends on the current context, i.e. it may change since some of the commands may require an established connection to the AS controller, or the presence of a certain node address in the domain management model, etc. For example, if the server configuration doesn't include messaging subsystem then the CLI will not expose messaging related commands.
+
+To see a detailed description of a specific command, execute the command with --help as the argument.
+
+Connection
+The first thing to do after the CLI has started is to connect to a managed AS7 instance. This is done using the command connect, e.g.
+
+connect
+
+which is equivalent to
+
+connect localhost:9999
+
+localhost:9999 is the default host and port combination for the AS7 model controller client. Both, the host and the port, are optional parameters and can be specified together or separately.
+
+Quit
+To terminate the session type quit.
+
+Operation requests
+Operation requests is considered a raw low level way to manage things. Normally, for convenience and friendliness users would use commands instead of operations. Although, there might be cases when operations can be more convenient or even the only way to do something.
+
+The format of the CLI operation requests is described in detail in The Format of the Command-line Operation Requests. And another useful article is The Command-line Compound Parameter Value Format.
+
+Operation requests can be long and verbose. But the tab-completion can help at almost any point.
+
+To syntactically disambiguate between the commands and operations, operations require one of the following prefixes:
+
+: - to execute an operation against the current node, e.g.
+[standalone@localhost:9999 subsystem=web] :read-resource(recursive=true)  
+./ - to execute an operation against a child node of the current node, e.g.
+[standalone@localhost:9999 subsystem=web] ./connector=http:read-resource  
+i.e. the full address of the operation will be subsystem=web,connector=http.
+
+[standalone@localhost:9999 subsystem=web] /:read-resource  
+/ - to execute an operation against the root node, e.g.
+[standalone@localhost:9999 subsystem=web] /:read-resource  
+or its child, e.g.
+
+[standalone@localhost:9999 subsystem=web] /subsystem=logging:read-resource  
+How the tab-completion works
+Suppose, the cursor is positioned at the beginning of an empty line. If you type in './' and press the tab key, you will get a list of all the available node types. After selecting the node type you want and adding '=', pressing the tab key again will result in a list of all the node names available for the chosen node type. If, after selecting the node name from the list, you want to continue with the node path then add ',' after the selected node name and press the tab key again. This will print all the available node types for the previously select node.
+
+After you are done with the node path, adding ':' at the end of the node path and pressing the tab key will print all the available operation names for the selected node.
+
+To see all the parameters of the operation, add '(' after the operation name and press the tab key. Choose the parameter you want and specify its value after '='. Tab-completion for parameter values is not supported (yet?). If you want to add more parameters, add ',' and press the tab key to see the rest of the available parameter names.
+
+Finally, when all the parameters have been specified, add ')' and press enter.
+
+In the node path you can use the following strings for navigations:
+
+.. - parent node, e.g.
+[standalone@localhost:9999 /] ./subsystem=web/../subsystem=transactions  
+is equivalent to
+
+[standalone@localhost:9999 /] ./subsystem=transactions  
+.type - the type of the current node, e.g.
+[standalone@localhost:9999 /] ./subsystem=web/.type/transactions  
+is equivalent to the same
+
+[standalone@localhost:9999 /] ./subsystem=transactions  
+Current node path and navigation
+The current node path is indicated in the command line prompt. The default value is '/', i.e. the root node. All the operation requests that don't contain the address part will be executed against the current node path.
+
+Change node command (cn or cd)
+cn, or cd, command allows you to change the current node path, e.g.
+
+[host:port /] cd subsystem=web  
+After that the command line prompt will change to
+
+[host:port /subsystem=web]  
+and every operation entered w/o the node path will be executed against the node subsystem=web. If you do specify a node path for the operation, it will be considered relative to subsystem=web.
+
+The node path might not necessarily end on a node name. It might be just
+
+[host:port /] cd subsystem  
+[host:port /subsystem]  
+Then to execute an operation against the logging subsystem you would type in
+
+[host:port /subsystem] logging:read-resource  
+To go back to the root node, type in
+
+[host:port /subsystem] cd /  
+[host:port /]  
+You can also navigate to the parent node
+
+[host:port /subsystem=web,connector=http] cd ..  
+[host:port /subsystem=web]  
+or the node type
+
+[host:port /subsystem=web] cd .type  
+[host:port /subsystem]  
+List contents command (ls)
+ls command will list the contents of a node path. The command has an optional node path argument. If the argument is specified, the command will print the contents of the node path specified in the argument. If the argument is not specified, the command will print the contents of the current node path (indicated in the prompt).
+
+If the node path ends on a node type then the contents will be the child node names. If the node path ends on a node name then the contents will be the child node types.
+
+If the contents of the node path is empty, nothing will be printed.
+
+Example:
+
+[localhost:9999 /subsystem=web] ls  
+virtual-server   connector  
+[localhost:9999 /subsystem=web] ls connector http  
+[localhost:9999 /subsystem=web]  
+Special characters in node names
+While ':' and '/' have special significance for in the format of the operation request, these characters aren't disallowed in node names.
+
+If they are typed in though, the operation request parser will be confused and will probably result it an error. To workaround this issue you should quote the names with special characters, e.g.
+
+[localhost:9999 /subsystem=datasources] cd data-source="java:/H2DS"  
+[localhost:9999 /subsystem=datasources/data-source=java:/H2DS]  
+The node name, actually, is also allowed to contain '"'. In case the node name has to be quoted and it also contains quotes in its content then the quotes that are a part of the node name content have to be escaped using, i.e. '\"'.
+
+[localhost:9999 /] cd nodetype="node:name/with\"quotes\""  
+[localhost:9999 /node:name/with"quotes"]  
+Note, that the tab-completion takes care of this automatically.
+
+Command history
+Command (and operation request) history is enabled by default. The history is kept both: in-memory and in a file on the disk, i.e. it is preserved between the command line sessions. The history file name is .jboss-cli-history and is automatically created in the user's home directory. When the command line interface is launched this file is read and the in-memory history is initialized with its content.
+
+While in the command line session, you can use the arrow keys to go back and forth in the history of commands and operations. To manipulate the history you can use history command.
+
+If executed w/o the argument, it will print all the recorded commands and operations (up to the configured maximum, which is by default 500) from the in-memory history.
+
+history supports three optional arguments:
+
+disable - will disable history expansion (but will not clear the previously recorded history);
+enabled - will re-enable history expansion (starting from the last recorded command before the history expansion was disabled);
+clear - will clear the in-memory history (but not the file one).
+
+------------------------
+
+juliojsb / jboss-cli-snippets-compilation
+github.com/juliojsb/jboss-cli-snippets-compilation
+juliojsb
+Jboss CLI snippets compilation
+Description
+A compilation of interesting code snippets useful to manage Jboss via CLI. It is intended as a point of reference to know how to do certain tasks, but remember you will have to adapt them to your environment! (datasource names, usernames...)
+
+In the snippets, I will use certain conventions:
+
+User -> jota
+
+Password -> mypassword
+
+Datasource -> jotaDS
+
+In some sections of the content I will place a subsection for standalone and another for domain. If not said otherwise, a command should work both in standalone and domain mode.
+
+Table of contents
+Connecting and interacting with the CLI
+Platform and subsystems information and monitoring
+Snapshots
+Start and stop components
+Deployments
+Datasources
+System properties
+Domain specific tips and tricks
+Network
+Naming and JNDI
+Logging
+License
+Connecting and interacting with the CLI
+There are many ways to connect and interact with the CLI:
+
+$JBOSS_HOME/bin/jboss-cli.sh -c
+$JBOSS_HOME/bin/jboss-cli.sh -c --controller=192.168.2.101:9990 --user=jota --password=mypassword
+$JBOSS_HOME/bin/jboss-cli.sh -c --controller=192.168.2.101:9990 --user=jota --password=mypassword --command=":shutdown"
+$JBOSS_HOME/bin/jboss-cli.sh -c --controller=192.168.2.101:9990 --user=jota --password=mypassword --file=mybatch.cli
+Platform and subsystems information and monitoring
+View codename of the Jboss version
+
+:read-attribute(name=release-codename)
+Check product version
+
+:read-attribute(name=product-version)
+Check the mode Jboss is running
+
+:read-attribute(name=launch-type)
+Check platform attributes, we can see many:
+
+We can see many (press TAB)
+[standalone@localhost:9990 /] /core-service=platform-mbean/type=
+buffer-pool  class-loading  compilation  garbage-collector  memory  memory-manager  memory-pool  operating-system  runtime  threading
+For example in standalone, to see the operating system:
+/core-service=platform-mbean/type=operating-system:read-resource(include-runtime=true,include-defaults=true)
+And in domain to see the operating system:
+/host=master/server=server-one/core-service=platform-mbean/type=operating-system:read-resource(include-runtime=true,include-defaults=true)
+Check runtime attributes
+
+For example, JVM version in standalone:
+/core-service=platform-mbean/type=runtime:read-attribute(name=spec-version)
+And in domain:
+/host=master/server=server-one/core-service=platform-mbean/type=runtime:read-attribute(name=spec-version,include-defaults=true)
+List subsystems
+
+In standalone:
+/:read-children-names(child-type=subsystem)
+In domain, list subsystems of a particular server instance:
+/host=master/server=server-one:read-children-names(child-type=subsystem)
+Snapshots
+Take snapshot
+
+:take-snapshot
+Load snapshot
+
+$JBOSS_HOME/bin/standalone.sh --server-config=standalone_xml_history/snapshot/20110913-164449522standalone.xml
+Delete snapshot
+
+:delete-snapshot(name="20110630-165714239standalone.xml")
+Delete all snapshots
+
+:delete-snapshot(name="all")
+List snapshots
+
+:list-snapshots
+Start and stop components
+Standalone
+Start standalone
+
+JBOSS_HOME/bin/standalone.sh (additional options, see --help)
+Stop standalone
+
+In the CLI:
+:shutdown()
+Passing as a command:
+$JBOSS_HOME/bin/jboss-cli.sh -c --controller=127.0.0.1:9999 --command=":shutdown()"
+$JBOSS_HOME/bin/jboss-cli.sh -c --controller=127.0.0.1:9999 --command=":shutdown()" --user=jota --password=mypassword
+Restart
+
+:shutdown(restart=true)
+Also passing as a command:
+$JBOSS_HOME/bin/jboss-cli.sh -c --controller=127.0.0.1:9990 --command=":shutdown(restart=true)"
+Domain
+Start domain
+
+JBOSS_HOME/bin/domain.sh (additional options)
+
+Shutdown domain
+
+$JBOSS_HOME/bin/jboss-cli.sh --connect --controller=localhost:9999 command="/host=master:shutdown"
+Or if user and password needed:
+$JBOSS_HOME/bin/jboss-cli.sh --connect --controller=localhost:9999 command=/host=master:shutdown  --user=jota --password=mypassword
+Also once logged in the CLI:
+/host=master:shutdown()
+
+Start and stop server instances from a server group
+
+/server-group=main-server-group:start-servers
+/server-group=main-server-group:stop-servers
+Start and stop a particular Jboss instance
+
+/host=master/server-config=server-one:start
+/host=master/server-config=server-one:stop
+Restart servers from server group
+
+/server-group=main-server-group:restart-servers()
+Deployments
+Standalone
+Deploy an application
+
+deploy /opt/jboss/example_apps/appbinaries/example.war
+Redeploy (force deployment when application is already deployed)
+
+deploy /opt/jboss/example_apps/appbinaries/example.war --force
+Deploy an application but leave it disabled
+
+deploy /opt/jboss/example_apps/appbinaries/example.war --disabled
+Check deployments
+
+deployment-info
+undeploy -l
+ls deployment
+Undeploy application
+
+undeploy example.war
+Disable application
+
+undeploy example.war --keep-content
+Enable a disabled application
+
+deploy --name=example.war
+Domain
+Deploy in a specific server group
+
+deploy /opt/jboss/example_apps/appbinaries/example.war --server-groups=main-server-group
+Redeploy/force deployment. Note that no server-group is passed. This is because the content of the application will be redeployed in the server-groups where it is already present
+
+deploy /opt/jboss/example_apps/appbinaries/example.war --force
+Undeploy in a specific server group
+
+undeploy example.war --server-groups=main-server-group
+Check deployments in a specific server group
+
+deployment-info --server-group=main-server-group
+Check information about one deployment
+
+deployment-info --name=jboss-as-kitchensink.war
+Deploy, undeploy or check all server groups
+
+deploy /opt/jboss/example_apps/appbinaries/example.war --all-server-groups
+undeploy example.war --all-relevant-server-groups
+Datasources
+Standalone
+Datasource/pool stastics
+
+/subsystem=datasources/data-source=jotaDS/statistics=pool:read-resource(include-runtime=true)
+/subsystem=datasources/data-source=jotaDS/statistics=jdbc:read-resource(include-runtime=true)
+/subsystem=datasources/data-source=jotaDS:read-resource(include-runtime=true,recursive=true)
+List description of available attributes and childs of a datasource
+
+/subsystem=datasources/data-source=jotaDS:read-resource-description
+Add datasource
+
+data-source add \
+    --name=jotaDS \
+    --driver-name=oracle \
+    --connection-url=jdbc:oracle:thin:@localhost:1521:XE \
+    --jndi-name=java:jboss/jdbc/jotaDS \
+    --user-name=databaseuser \
+    --password=password \
+    --use-ccm=false \
+    --max-pool-size=25 \
+    --blocking-timeout-wait-millis=5000 \
+    --enabled=true
+Add XA datasource
+
+xa-data-source add \
+    --name=jotaDS \
+    --driver-name=postgresql \
+    --jndi-name=java:jboss/jdbc/jotaDS \
+    --user-name=demouser \
+    --password=password \
+    --recovery-username= jota \
+    --recovery-password = mypassword \
+    --use-ccm=false \
+    --max-pool-size=25 \
+    --blocking-timeout-wait-millis=5000 \
+    --enabled=true"
+/subsystem=datasources/xa-data-source=jotaDS/xa-datasource-properties=ServerName:add(value=localhost)
+/subsystem=datasources/xa-data-source=jotaDS/xa-datasource-properties=PortNumber:add(value=5432)
+/subsystem=datasources/xa-data-source=jotaDS/xa-datasource-properties=DatabaseName:add(value=jotaDatabase)
+Remove, enable, disable datasource
+
+data-source remove --name=jotaDS
+data-source enable --name=jotaDS
+data-source disable --name=jotaDS
+Remove database driver
+
+/subsystem=datasources/jdbc-driver=h2:remove
+Add JDBC driver
+
+/subsystem=datasources/jdbc-driver=postgresql:add(driver-name=postgresql,driver-module-name=org.postgresql.jdbc,driver-xa-datasource-class-name=org.postgresql.xa.PGXADataSource)
+Flush datasources
+
+/subsystem=datasources/data-source=jotaDS:flush-idle-connection-in-pool
+/subsystem=datasources/data-source=jotaDS:flush-all-connection-in-pool
+Enable statistics (Jboss EAP 6.3+)
+
+/subsystem=datasources/data-source=jotaDS/statistics=pool:write-attribute(name=statistics-enabled,value=true)
+/subsystem=datasources/data-source=jotaDS/statistics=jdbc:write-attribute(name=statistics-enabled,value=true)
+/subsystem=datasources/data-source=jotaDS:write-attribute(name=statistics-enabled,value=true)
+See statistics
+
+/subsystem=datasources/data-source=jotaDS/statistics=pool:read-resource(include-runtime=true)
+/subsystem=datasources/data-source=jotaDS/statistics=jdbc:read-resource(include-runtime=true)
+/subsystem=datasources/data-source=jotaDS:read-resource(include-runtime=true,recursive=true)
+List all available datasources
+
+/subsystem=datasources:read-resource
+Write, remove attributes
+
+/subsystem=datasources/data-source=jotaDS:write-attribute(name=query-timeout,value=300)
+/subsystem=datasources/data-source=jotaDS:undefine-attribute(name=query-timeout)
+Domain
+Flush datasources
+
+/host=master/server=server1/subsystem=datasources/data-source=jotaDS:flush-idle-connection-in-pool
+/host=master/server=server1/subsystem=datasources/data-source=jotaDS:flush-all-connection-in-pool
+Enable statistics in a profile datasource (Jboss EAP 6.3+)
+
+/profile=full-ha/subsystem=datasources/data-source=jotaDS:write-attribute(name=statistics-enabled,value=true)
+See statistics
+
+/host=master/server=server1/subsystem=datasources/data-source=jotaDS/statistics=pool:read-resource(include-runtime=true)
+/host=master/server=server1/subsystem=datasources/data-source=jotaDS/statistics=jdbc:read-resource(include-runtime=true)
+Information regarding timeouts, max/min pool, enabled/disabled...
+
+/host=master/server=server1/subsystem=datasources/data-source=jotaDS:read-resource(include-runtime=true,recursive=true)
+Also at profile level, information:
+/profile=full-ha/subsystem=datasources/data-source=jotaDS:read-resource(include-runtime=true,recursive=true)
+List all available datasources in a given profile
+
+/profile=full-ha/subsystem=datasources:read-resource
+Write, remove attributes
+
+/profile=myprofile-ha/subsystem=datasources/data-source=jotaDS:write-attribute(name=query-timeout,value=300)
+/profile=myprofile-ha/subsystem=datasources/data-source=jotaDS:undefine-attribute(name=query-timeout)
+Add datasource to a profile (in this example,full-ha)
+
+data-source add \
+    --name=jotaDS \
+    --driver-name=oracle \
+    --connection-url=jdbc:oracle:thin:@localhost:1521:XE \
+    --jndi-name=java:jboss/jdbc/jotaDS \
+    --user-name=databaseuser \
+    --password=password \
+    --use-ccm=false \
+    --max-pool-size=25 \
+    --blocking-timeout-wait-millis=5000 \
+    --profile=full-ha \
+    --enabled=true
+Add XA datasource to a profile (in this example,full-ha)
+
+xa-data-source add \
+    --name=jotaDS \
+    --driver-name=postgresql \
+    --jndi-name=java:jboss/jdbc/jotaDS \
+    --user-name=demouser \
+    --password=password \
+    --recovery-username= jota \
+    --recovery-password = mypassword \
+    --use-ccm=false \
+    --max-pool-size=25 \
+    --blocking-timeout-wait-millis=5000 \
+    --enabled=true" \
+    --profile=full-ha
+After adding it, add the connection URL:
+/profile=full-ha/subsystem=datasources/xa-data-source=ApplicationXADS/xa-datasource-properties=ServerName:add(value=localhost)
+/profile=full-ha/subsystem=datasources/xa-data-source=ApplicationXADS/xa-datasource-properties=PortNumber:add(value=5432)
+/profile=full-ha/subsystem=datasources/xa-data-source=ApplicationXADS/xa-datasource-properties=DatabaseName:add(value=jotaDB)
+Remove, disable, enable datasource
+
+data-source --profile=full-ha remove --name=jotaDS
+data-source --profile=full-ha disable --name=jotaDS
+data-source --profile=full-ha enable --name=jotaDS
+Read datasource
+
+data-source --profile=full-ha read-resource --name=jotaDS
+Also at profile level:
+/profile=full-ha/subsystem=datasources/data-source=jotaDS:read-resource()
+System properties
+Standalone
+Add, read, remove, write-attribute
+
+/system-property=foo:add(value=bar)
+/system-property=foo:read-resource
+/system-property=foo:remove
+/system-property=foo:write-attribute(name="value", value="newValue")
+View all system properties
+
+/core-service=platform-mbean/type=runtime:read-attribute(name=system-properties)
+Domain
+Add, read, remove, write-attribute affecting all hosts and server instances in domain (the system property will be added in domain.xml)
+
+/system-property=foo:add(value=bar)
+/system-property=foo:read-resource
+/system-property=foo:remove
+/system-property=foo:write-attribute(name="value", value="newValue")
+Add, read, remove write-attribute affecting only host and its server instances (the system property will be added in host.xml)
+
+/host=master/system-property=foo:add(value=bar)
+/host=master/system-property=foo:read-resource
+/host=master/system-property=foo:remove
+/host=master/system-property=foo:write-attribute(name="value", value="newValue")
+Manage system properties at server instance level
+
+/host=master/server-config=server-one/system-property=foo:add(value=bar)
+/host=master/server-config=server-one/system-property=foo:read-resource
+/host=master/server-config=server-one/system-property=foo:remove
+/host=master/server-config=server-one/system-property=foo:write-attribute(name="value", value="newValue")
+View system properties
+
+At host level:
+/host=master/core-service=platform-mbean/type=runtime:read-attribute(name=system-properties)
+At server instance level:
+/host=master/server=server-one/core-service=platform-mbean/type=runtime:read-attribute(name=system-properties)
+Domain specific tips and tricks
+View to which server group belongs a server:
+
+/host=master/server-config=server-one:read-attribute(name=group)
+To view all the servers and the groups they belong to:
+
+/host=master/server-config=*:read-attribute(name=group)
+Get list of servers available in the domain in a particular host:
+
+ls host=master/server-config
+Or also:
+/host=master:read-children-names(child-type=server-config)
+To view info about a particular server
+
+/host=master/server-config=server-one:read-resource(include-runtime=true)
+Configure JVM for a particular Jboss instance
+
+/host=master/server-config=server-one/jvm=MYJVM/:add(max-heap-size=1028m,env-classpath-ignored=false,permgen-size=256m,max-permgen-size=256m,heap-size=1028m,jvm-options=["-server"])
+Add JVM option to the default definition of your JVM
+
+Host level
+/host=master/jvm=default:add-jvm-option(jvm-option="-XX:NewSize=1024m")
+Server-group level
+/server-group=main-server-group/jvm=default:add-jvm-option(jvm-option="-XX:NewSize=1024m")
+Jboss instance levelç
+/host=master/server-config=server-one/jvm=MYJVM:add-jvm-option(jvm-option="-XX:NewSize=1024m")
+Network
+Standalone
+See public interface
+
+/interface=public:read-resource(include-runtime=true)
+Domain
+See public interface of a Jboss server instance
+
+/host=master/server=server-one/interface=public:read-resource(include-runtime=true)
+Naming and JNDI
+Standalone
+Add, remove, modify, read JNDI
+
+/subsystem=naming/binding=java\:jboss\/param\/demoParam:add(value="Demo configuration value",binding-type=simple)
+Will result in:
+<subsystem xmlns="urn:jboss:domain:naming:1.4">
+    <bindings>
+        <simple name="java:jboss/param/demoParam" value="Demo configuration value"/>                            
+    </bindings>
+    <remote-naming/>
+</subsystem>
+Remove, modify and read:
+/subsystem=naming/binding=java\:jboss\/param\/demoParam:remove()
+/subsystem=naming/binding=java\:jboss\/param\/demoParam:write-attribute(name=value,value="Modified")
+/subsystem=naming/binding=java\:jboss\/param\/demoParam:read-resource(include-defaults=true)
+Check JNDI Tree
+
+/subsystem=naming:jndi-view
+Domain
+Add,remove, modify, read JNDI
+
+/profile=full-ha/subsystem=naming/binding=java\:jboss\/param\/demoParam:add(value="Demo configuration value",binding-type=simple)
+/profile=full-ha/subsystem=naming/binding=java\:jboss\/param\/demoParam:remove()
+/profile=full-ha/subsystem=naming/binding=java\:jboss\/param\/demoParam:write-attribute(name=value,value="Modified")
+/profile=full-ha/subsystem=naming/binding=java\:jboss\/param\/demoParam:read-resource(include-defaults=true)
+Check JNDI Tree
+
+/host=master/server=server-one/subsystem=naming:jndi-view()
+Logging
+Standalone
+Change a logger log level, for example root-logger to DEBUG:
+
+/subsystem=logging/root-logger=ROOT/:write-attribute(name=level,value=DEBUG)
+Create log-category for a specific package:
+
+/subsystem=logging/logger=package.name/:add(category=package.name,level=INFO,use-parent-handlers=true)
+Change log level for that package to DEBUG:
+
+/subsystem=logging/logger=package.name:change-log-level(level=DEBUG)
+Take a look at the following interesting operations you can perform since Jboss EAP 7
+
+List logs available for a Jboss instance
+/subsystem=logging:list-log-files
+Read last 5 lines of server.log
+/subsystem=logging:read-log-file(name=server.log,lines=5,skip=0)
+Make a tail showing the last 10 lines of server.log
+/subsystem=logging:read-log-file(name=server.log,tail=true,lines=10,skip=0)
+Domain
+Change the log level of the root-logger to DEBUG in the profile my-app (this profile name will change in your case):
+
+/profile=my-app/subsystem=logging/root-logger=ROOT:change-root-log-level(level=DEBUG)
+Add log-category for a package:
+
+/profile=my-app/subsystem=logging/logger=package.name/:add(category=package.name,level=INFO,use-parent-handlers=true)
+Change log level of a log-category:
+
+/profile=my-app/subsystem=logging/logger=package.name:change-log-level(level=DEBUG)
+Also in domain mode, you can perform the following operations since Jboss EAP 7
+
+List logs available for a Jboss instance server-one in master host
+/host=master/server=server-one/subsystem=logging:list-log-files
+Read last 5 lines of server.log of server-one
+/host=master/server=server-one/subsystem=logging:read-log-file(name=server.log,lines=5,skip=0)
+Make a tail showing the last 10 lines of server-one's server.log
