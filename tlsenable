@@ -1,0 +1,10 @@
+batch
+/profile=default/subsystem=elytron/key-store=demoKeyStore:add(path=server.keystore,relative-to=jboss.server.config.dir, credential-reference={clear-text=secret},type=JKS)
+/profile=default/subsystem=elytron/key-manager=demoKeyManager:add(key-store=demoKeyStore,credential-reference={clear-text=secret})
+/profile=default/subsystem=elytron/server-ssl-context=demoSSLContext:add(key-manager=demoKeyManager,protocols=["TLSv1.2"])  
+/profile=default/subsystem=undertow/server=default-server/https-listener=https:undefine-attribute(name=security-realm)
+/profile=default/subsystem=undertow/server=default-server/https-listener=https:write-attribute(name=ssl-context,value=demoSSLContext)
+ 
+run-batch 
+ 
+reload
