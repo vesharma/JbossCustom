@@ -1,0 +1,25 @@
+DC 
+keytool -genkey -alias appserver -storetype jks -keyalg RSA -keysize 2048 -keypass  \
+password1 -keystore EAP_HOME/standalone/configuration/identity.jks -storepass password1 - \
+dname "CN=appserver,OU=Sales,O=Systems Inc,L=Raleigh,ST=NC,C=US" -validity 730 -v
+
+keytool -export -alias "DCServerCert" -file DCServercert.cer -keystore DCServer.keystore
+keytool -import -alias "DCServerCert" -file DCServercert.cer -keystore DCServer.keystore
+
+
+
+/host=master/core-service=management/management-interface=http-interface:writeattribute(
+name=secure-port,value=9993)
+/host=master/core-service=management/management-interface=http-interface:undefineattribute(
+name=port)
+
+/socket-binding-group=standard-sockets/socket-binding=management-https:readresource(
+recursive=true)
+
+/ql/jboss-eap.7.2/domain/configuration/host.xml
+            <security-realm name="ManagementRealm">
+               <server-identities>
+                    <ssl>
+               <keystore path="DCServer.keystore" relative-to="jboss.domain.config.dir" keystore-password="secret" alias="dcservercert" key-password="secret"/>
+                    </ssl>
+                </server-identities>
