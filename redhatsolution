@@ -1,0 +1,97 @@
+Configuring SSL in JBoss EAP 7.1 or later using Elytron
+access.redhat.com/solutions/3308631
+Environment
+JBoss Enterprise Application Platform (EAP)
+7.1
+7.2
+Elytron
+SSL/TLS
+HTTPS and Management Interfaces
+Issue
+Configure/enable one-way including the management system
+Verify Certificate and TLS version
+Error when configuring SSL on the Mangement Interface
+Resolution
+To enable SSL, a certificate is necessary. For demonstration purposes, it's possible to create a self-signed certificate, however, in production, it'll normally a signed certificate. In this solution, a self-signed certificate will be used.
+
+To create a self-signed certificate:
+
+Raw
+keytool -genkey -alias jboss -keysize 2048 -validity 365 -keyalg RSA -sigalg SHA256withRSA -keystore jboss.jks -storepass     jboss@123 -keypass jboss@123 -dname "CN=example.com, OU=JavaEE, O=Red Hat, C=IN"
+Connect to JBoss EAP in CLI mode and execute the below commands to configure keystore, key-manager and ssl-context in Elytron subsystem:
+
+For standalone mode:
+
+Raw
+#Configure a keystore 
+/subsystem=elytron/key-store=newKS:add(type=JKS,path="${jboss.home.dir}/ssl/jboss.jks",credential-reference={clear-text=jboss@123})
+
+#Create a new key-manager
+/subsystem=elytron/key-manager=newKM:add(algorithm=SunX509,key-store=newKS,credential-reference={clear-text=jboss@123})
+
+#Configure new server-ssl-context reference with protocol and ciphers
+/subsystem=elytron/server-ssl-context=newSSC:add(key-manager=newKM,protocols=[TLSv1.2],cipher-suite-filter="TLS_RSA_WITH_AES_128_CBC_SHA,TLS_RSA_WITH_AES_256_CBC_SHA")
+For domain mode:
+
+Raw
+#Configure a keystore 
+/profile=<profile-name>/subsystem=elytron/key-store=httpsKS:add(path="${jboss.home.dir}/ssl/jboss.jks", credential-reference={clear-text=jboss@123}, type=JKS)
+
+#Create a new key-manager
+/profile=<profile-name>/subsystem=elytron/key-manager=httpsKM:add(key-store=httpsKS,algorithm="SunX509",credential-reference={clear-text=jboss@123})
+
+#Configure new server-ssl-context reference with protocol and ciphers
+/profile=<profile-name>/subsystem=elytron/server-ssl-context=httpsSSC:add(key-manager=httpsKM,protocols=["TLSv1.2"])
+Configure undertow to map ssl-context of Elytron:
+
+Batch execution is necessary, or else it will fail as both the commands have to execute simultaneously
+
+For standalone mode:
+
+Raw
+batch
+/subsystem=undertow/server=default-server/https-listener=https:undefine-attribute(name=security-realm)
+/subsystem=undertow/server=default-server/https-listener=https:write-attribute(name=ssl-context,value=newSSC)
+run-batch
+For domain mode:
+
+Raw
+batch
+/profile=<profile-name>/subsystem=undertow/server=default-server/https-listener=https:undefine-attribute(name=security-realm)
+/profile=<profile-name>/subsystem=undertow/server=default-server/https-listener=https:write-attribute(name=ssl-context,value=httpsSSC)
+run-batch
+(Optional) To secure the management-interface to use the same ssl-context :
+
+For standalone mode:
+
+Raw
+#Configure secure-port for management-http interface
+/core-service=management/management-interface=http-interface:write-attribute(name=secure-socket-binding,value=management-https)
+
+#Map ssl-context with management-http interface
+/core-service=management/management-interface=http-interface:write-attribute(name=ssl-context,value=newSSC)
+For domain mode:
+
+It's necessary to define the ssl-context again on the host to make this work because the host-*.xml files define the configuration for the domain controllers and host controllers, which hold the management interfaces. It's basically step 2 over again replacing /profile=<profile-name> with /host=<host-name> where <host-name> will be replaced with the name specified at the top of host-*.xml The management-interface commands also need to prefixed with /host=<host-name>.
+
+Raw
+#Configure the secure-port for managemente-http interface
+/host=master/core-service=management/management-interface=http-interface:write-attribute(name=secure-port,value=9993)
+This gets more complicated because the remote host controllers have to then connect to the domain controller via SSL as well, and therefore need a properly configured truststore.
+
+See Securing a Managed Domain for more information.
+
+Reload the servers to make the change effective.
+
+For standalone mode:
+
+Raw
+reload
+For domain mode:
+
+Raw
+reload --host=master
+Diagnostic Steps
+This solution is part of Red Hat’s fast-track publication program, providing a huge library of solutions that Red Hat engineers have created while supporting our customers. To give you the knowledge you need the instant it becomes available, these articles may be presented in a raw and unedited form.
+
+
