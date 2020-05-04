@@ -3,6 +3,9 @@ keytool -genkey -alias appserver -storetype jks -keyalg RSA -keysize 2048 -keypa
 password1 -keystore EAP_HOME/standalone/configuration/identity.jks -storepass password1 - \
 dname "CN=appserver,OU=Sales,O=Systems Inc,L=Raleigh,ST=NC,C=US" -validity 730 -v
 
+
+ keytool -genkey -dname "CN=nodeserver , OU=ETG, O=Fiserv,L=US, S=Us, C=Us" -alias "nodeCert" -storetype jks -keyalg RSA -keysize 2048 -keypass secret -keystore NodeServer.keystore -validity 730 -storepass secret -v
+
 keytool -export -alias "DCServerCert" -file DCServercert.cer -keystore DCServer.keystore
 keytool -import -alias "DCServerCert" -file DCServercert.cer -keystore DCServer.keystore
 
