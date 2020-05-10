@@ -29,3 +29,11 @@ yum  --noplugins list
   yum groupinstall "Server with GUI"
    systemctl start graphical.target
     yum --disablerepo="*" --enablerepo="epel" list available | grep 'package'
+
+
+https://www.mydailytutorials.com/working-ansible-conditionals-using-clause/
+https://www.linuxtechi.com/use-when-conditions-in-ansible-playbook/
+https://www.mydailytutorials.com/working-ansible-conditionals-using-clause/
+https://riptutorial.com/ansible/example/12269/when-condition
+https://medium.com/opsops/import-playbook-with-play-level-condition-775122fe78ff
+https://www.linuxtopic.com/2019/06/how-to-use-conditionals-in-ansible.html
