@@ -16,3 +16,16 @@ gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
 yum clean all
 yum repolist enabled
+subscription-manager clean
+
+Verify if you can list out the packages from the repo you just created.
+yum  --noplugins list
+ yum repolist -v
+ yum install https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+ subscription-manager repos --enable "rhel-*-optional-rpms" --enable "rhel-*-extras-rpms"  --enable "rhel-ha-for-rhel-*-server-rpms"
+ 
+ 
+  yum groups install "Server with GUI"
+  yum groupinstall "Server with GUI"
+   systemctl start graphical.target
+    yum --disablerepo="*" --enablerepo="epel" list available | grep 'package'
