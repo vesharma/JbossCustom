@@ -1,3 +1,34 @@
+Tested for DC.
+https://access.redhat.com/solutions/3669891
+1. Obtain or generate the keystore :
+
+keytool -genkeypair -alias localhost -keyalg RSA -keysize 1024 -validity 365 -keystore keystore.jks -dname "CN=localhost" -keypass secret -storepass secret
+
+2. Copy the keystore.jks file to $EAP_HOME/domain/configuration when using domain mode or $EAP_HOME/standalone/configuration when using standalone mode
+	
+/host=master/subsystem=elytron/key-store=httpsKS:add(path=keystore.jks,relative-to=jboss.domain.config.dir,credential-reference={clear-text=secret},type=JKS)
+
+/host=master/subsystem=elytron/key-manager=httpsKM:add(key-store=httpsKS,algorithm="SunX509",credential-reference={clear-text=secret})
+
+/host=master/subsystem=elytron/server-ssl-context=httpsSSC:add(key-manager=httpsKM,protocols=["TLSv1.2"])
+
+3. Configure the management console to use ssl-context :
+/host=master/core-service=management/management-interface=http-interface:write-attribute(name=ssl-context, value=httpsSSC)
+
+
+4. Configure the management interface to use a secure interface and port :
+/host=master/core-service=management/management-interface=http-interface:write-attribute(name=secure-interface, value=management)
+
+/host=master/core-service=management/management-interface=http-interface:write-attribute(name=secure-port, value=9443)
+
+5. reload --host=masterdc
+
+=======================================================
+
+
+
+
+
 DC 
 keytool -genkey -alias appserver -storetype jks -keyalg RSA -keysize 2048 -keypass  \
 password1 -keystore EAP_HOME/standalone/configuration/identity.jks -storepass password1 - \
