@@ -1,0 +1,18 @@
+mount /dev/cdrom  /media
+ cp /mnt/disc/media.repo /etc/yum.repos.d/rhel7dvd.repo
+# chmod 644 /etc/yum.repos.d/rhel7dvd.repo
+
+vi /etc/yum.repos.d/rhel7dvd.repo
+[rhel7Media]
+name=DVD for Red Hat Enterprise Linux 7.1 Server
+#mediaid=1359576196.686790
+#metadata_expire=-1
+enabled=1
+gpgcheck=1
+#cost=500
+baseurl=file:///media
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+
+
+yum clean all
+yum repolist enabled
