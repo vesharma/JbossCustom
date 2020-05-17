@@ -1,0 +1,128 @@
+MASTER--
+
+hostnamectl set-hostname 'k8s-master'
+setenforce 0
+exec bash
+sed -i --follow-symlinks 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/sysconfig/selinux
+
+modprobe br_netfilter
+echo '1' > /proc/sys/net/bridge/bridge-nf-call-iptables
+ 
+cat <<EOF > /etc/yum.repos.d/kubernetes.repo
+[kubernetes]
+name=Kubernetes
+baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
+enabled=1
+gpgcheck=0
+repo_gpgcheck=0
+gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg
+        https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+EOF
+
+
+ firewall-cmd --permanent --add-port=6443/tcp
+ firewall-cmd --permanent --add-port=2379-2380/tcp
+ firewall-cmd --permanent --add-port=10250/tcp
+ firewall-cmd --permanent --add-port=10251/tcp
+ firewall-cmd --permanent --add-port=10252/tcp
+ firewall-cmd --permanent --add-port=10255/tcp
+ firewall-cmd –reload
+ modprobe br_netfilter
+ echo '1' > /proc/sys/net/bridge/bridge-nf-call-iptables
+
+
+yum  install  docker -y
+yum install kubeadm kubelet kubectl -y
+systemctl restart docker
+systemctl enable docker
+systemctl  restart kubelet
+systemctl  enable  kubelet
+
+docker images
+docker ps 
+yum install net-tools -y 
+netstat -tunlp
+
+cat /proc/cpuinfo |grep processor |wc -l
+
+swapoff -a
+kubeadm config images pull
+kubeadm init >> /root/kubeadmoutput.txt
+
+
+mkdir -p $HOME/.kube
+cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+chown $(id -u):$(id -g) $HOME/.kube/config
+
+kubectl  get pods  --all-namespaces
+ export kubever=$(kubectl version | base64 | tr -d '\n')
+
+kubectl apply -f "https://cloud.weave.works/k8s/net?k8s-version=$kubever"
+
+#kubectl  apply  --filename https://git.io/weave-kube-1.6
+
+
+#kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/a70459be0084506e4ec919aa1c114638878db11b/Documentation/kube-flannel.yml
+
+kubectl get nodes
+export kubever=$(kubectl version | base64 | tr -d '\n')
+kubectl apply -f "https://cloud.weave.works/k8s/net?k8s-version=$kubever"
+kubectl get nodes
+
+
+
+
+kubeadm join 192.168.254.139:6443 --token fy26lg.3iztw9oixbtky0q0 \
+    --discovery-token-ca-cert-hash sha256:2626c672b66a83b4a70ce59c21ab1dd730a817d8df90e1fec2d344b8dfcc5050
+
+
+
+-------------------------------------------------------------
+
+==Worker
+
+
+setenforce 0
+exec bash
+sed -i --follow-symlinks 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/sysconfig/selinux
+
+modprobe br_netfilter
+echo '1' > /proc/sys/net/bridge/bridge-nf-call-iptables
+ 
+cat <<EOF > /etc/yum.repos.d/kubernetes.repo
+[kubernetes]
+name=Kubernetes
+baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
+enabled=1
+gpgcheck=0
+repo_gpgcheck=0
+gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg
+        https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+EOF
+
+
+ firewall-cmd --permanent --add-port=6783/tcp
+ firewall-cmd --permanent --add-port=10250/tcp
+ firewall-cmd --permanent --add-port=10255/tcp
+ firewall-cmd --permanent --add-port=30000-32767/tcp
+ firewall-cmd  --reload
+ echo '1' > /proc/sys/net/bridge/bridge-nf-call-iptables
+
+cat <<EOF > /etc/yum.repos.d/kubernetes.repo
+[kubernetes]
+name=Kubernetes
+baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
+enabled=1
+gpgcheck=0
+repo_gpgcheck=0
+gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg
+        https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+EOF
+
+
+yum install kubeadm docker -y
+
+systemctl enable docker
+systemctl start docker
+systemctl enable kubelet
+ systemctl start kubelet
