@@ -19,3 +19,4 @@ java -version
 
 cp -prv /ql/jboss-eap-7.2/domain/configuration/ /ql/jboss-eap-7.2/domain/configuration_bak
 /ql/jboss-eap-7.2/bin/add-user.sh -u admin -p redhat@1 -ds >> /ql/jboss-eap-7.2/secret.txt
+rm -rf /root/jboss-eap-7.2
