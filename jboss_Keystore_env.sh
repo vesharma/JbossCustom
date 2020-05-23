@@ -2,6 +2,7 @@
 
 rm -rf /root/jboss-eap-7.2
 rm -rf /root/jdk1.8.0_202 /ql/java
+rm -rf /ql/jboss-eap-7.2
 
 systemctl stop firewalld
 
@@ -21,6 +22,9 @@ java -version
 
 cp -prv /ql/jboss-eap-7.2/domain/configuration/ /ql/jboss-eap-7.2/domain/configuration_bak
 /ql/jboss-eap-7.2/bin/add-user.sh -u admin -p redhat@1 -ds >> /ql/jboss-eap-7.2/secret.txt
+
+rm -rf /root/jboss-eap-7.2
+
 
 
 
