@@ -1,0 +1,93 @@
+mkdir -p /root/Software/{dump,Script,SSLCERTDir,tmp}
+
+[root@localhost Software]# ls -ltR
+.:
+total 0
+drwxr-xr-x. 2 root root 74 May 25 00:36 SSLCERTDir
+drwxr-xr-x. 2 root root 41 May 25 00:34 Script
+drwxr-xr-x. 2 root root  6 May 25 00:30 tmp
+drwxr-xr-x. 2 root root 67 May 25 00:16 dump
+
+./SSLCERTDir:
+total 12
+-rw-r--r--. 1 root root 2501 May 25 00:36 server.keystore
+-rw-r--r--. 1 root root 2149 May 25 00:36 server.keystore.old
+-rw-r--r--. 1 root root  793 May 25 00:34 server.crt
+
+./Script:
+total 8
+-rw-r--r--. 1 root root 1208 May 25 00:34 SSLevncert.sh
+-rw-r--r--. 1 root root  855 May 25 00:29 env.sh
+
+./tmp:
+total 0
+
+./dump:
+total 386232
+-rw-r--r--. 1 root root 194042837 May  1 18:01 jdk-8u202-linux-x64.tar.gz
+-rw-r--r--. 1 root root 201457392 Apr 27 14:37 jboss-eap-7.2.0.zip
+[root@localhost Software]#
+
+
+[root@localhost Software]# cat Script/env.sh
+#!/bin/sh
+
+rm -rf /root/Software/tmp/jboss-eap-7.2 /ql/jboss-eap-7.2 /ql/java/*
+#rm -rf /root/Software/tmp/jdk1.8.0_202 /ql/java
+
+
+systemctl stop firewalld
+
+#Java installation
+
+rm -f /ql/java/current-java
+rm -f /etc/alternatives/java
+rm -f /bin/java
+
+mkdir -p /ql/java
+tar -xvf /root/Software/dump/jdk-8u202-linux-x64.tar.gz -C /ql/java/
+ln -s /ql/java/jdk1.8.0_202 /ql/java/current-java
+ln -s /ql/java/current-java/bin/java /etc/alternatives/java
+ln -s /etc/alternatives/java /bin/java
+java -version
+
+#Jboss installation
+unzip /root/Software/dump/jboss-eap-7.2.0.zip -d /root/Software/tmp
+mv /root/Software/tmp/jboss-eap-7.2 /ql/
+
+cp -prv /ql/jboss-eap-7.2/domain/configuration/ /ql/jboss-eap-7.2/domain/configuration_bak
+/ql/jboss-eap-7.2/bin/add-user.sh -u admin -p redhat@1 -ds > /ql/jboss-eap-7.2/secret.txt
+
+rm -rf /root/Software/tmp/jboss-eap-7.2
+[root@localhost Software]#
+
+
+[root@localhost Software]# cat Script/SSLevncert.sh
+#!/bin/sh
+
+cd /root/Software/SSLCERTDir
+rm -rf client.crt client.truststore client.keystore server.crt server.keystore
+
+
+# Server Keystore
+/ql/java/current-java/bin/keytool  -genkeypair -alias localhost -keyalg RSA -keysize 2048 -validity 365 -keystore server.keystore -dname "cn=Server Administrator,o=Acme,c=GB" -keypass secret -storepass secret
+
+/ql/java/current-java/bin/keytool -exportcert  -keystore server.keystore -alias localhost -keypass secret -storepass secret -file server.crt
+
+/ql/java/current-java/bin/keytool -importcert -keystore server.truststore -storepass secret -alias client -trustcacerts -file client.crt -noprompt
+
+
+
+
+# Client Keystore
+#1
+#/ql/java/current-java/bin/keytool -genkeypair -alias client -keyalg RSA -keysize 2048 -validity 365 -keystore client.keystore -dname "CN=client" -keypass secret -storepass secret
+
+#2
+#/ql/java/current-java/bin/keytool  -exportcert  -keystore client.keystore -alias client -keypass secret -storepass secret -file client.crt
+
+#3.
+#/ql/java/current-java/bin/keytool  -importcert -keystore client.truststore -storepass secret -alias localhost -trustcacerts -file server.crt -noprompt
+#
+
+#cp client.truststore /ql/jboss-eap-7.2/domain/configuration
