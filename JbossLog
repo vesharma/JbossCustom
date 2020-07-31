@@ -1,0 +1,44 @@
+#!/bin/sh
+
+hostvar=$(hostname | awk -F'.' '{print $1}')
+Currentdatevar=$(date +"%d-%m-%y")
+
+echo -e "Hostname is $hostvar "
+echo -e "Current date is $Currentdatevar "
+HostdateDir="$hostvar"_"$Currentdatevar"
+
+yum -y install rsync
+
+InstanceArray=$(find /opt/jboss/domain/ -iname *.log -print |awk -F '/' '{print $(NF -2)}' |uniq)
+
+#Now create Instance directory
+for instancevar in $InstanceArray
+do
+  #echo $instancevar
+
+    # Create Daily Log directory
+    if [ ! -d  "/mnt/log/$HostdateDir/$instancevar" ]
+    then
+       mkdir -p /mnt/log/$HostdateDir/$instancevar
+    #else
+      # echo "Directory /mnt/log/$HostdateDir/$instancevar exists. "
+    fi
+
+  InstanceFilter=$(find /opt/jboss/domain/ -iname '*.log.*'  |uniq|egrep -i $instancevar)
+   for movelog in $InstanceFilter
+   do
+     #tardir= $movelog | awk -F'/' '{print $(NF -2)}'
+
+     rsync -avp  $movelog /mnt/log/$HostdateDir/$instancevar && cp -prv $movelog  /mnt/log/$HostdateDir/bak/ && rm -rf $movelog
+     cd /mnt/log/$HostdateDir
+
+    if [ ! -d  "$instancevar.tar" ]
+     then
+       echo -e " incase of new file "
+       # tar -cvzf $instancevar.tar -C /mnt/log/$HostdateDir  /mnt/log/$HostdateDir/$instancevar/log/* && rm -rf /mnt/log/$HostdateDir/$instancevar
+     else
+      echo -e "incase of append file"
+       # tar --append $instancevar.tar -C /mnt/log/$HostdateDir  /mnt/log/$HostdateDir/$instancevar/log/* && rm -rf /mnt/log/$HostdateDir/$instancevar
+     fi
+   done
+done
