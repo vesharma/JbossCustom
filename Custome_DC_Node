@@ -1,0 +1,94 @@
+        <management-interfaces>
+            <http-interface security-realm="ManagementRealm">
+                <http-upgrade enabled="true"/>
+                <socket interface="management" port="${jboss.management.http.port:9990}"/>
+            </http-interface>
+            <native-interface security-realm="ManagementRealm">
+                 <socket interface="management" port="${jboss.management.native.port:9999}"/>
+             </native-interface>
+        </management-interfaces>
+    </management>
+    <domain-controller>
+
+ <remote protocol="remote" host="${jboss.domain.master.address:192.168.30.7}" port="${jboss.domain.master.port:9999}" username="admin" security-realm="ManagementRealm"/>
+
+<!--
+        <remote security-realm="ManagementRealm">
+            <discovery-options>
+                <static-discovery name="primary" protocol="${jboss.domain.master.protocol:remote+http}" host="${jboss.domain.master.address}" port="${jboss.domain.master.port:9990}"/>
+            </discovery-options>
+        </remote>
+
+
+    </domain-controller>
+    <interfaces>
+        <interface name="management">
+            <inet-address value="${jboss.bind.address.management:192.168.30.8}"/>
+        </interface>
+        <interface name="public">
+            <inet-address value="${jboss.bind.address:192.168.30.8}"/>
+        </interface>
+    </interfaces>
+    <jvms>
+        <jvm name="default">
+            <heap size="64m" max-size="256m"/>
+            <jvm-options>
+                <option value="-server"/>
+                <option value="-XX:MetaspaceSize=96m"/>
+                <option value="-XX:MaxMetaspaceSize=256m"/>
+                <option value="--add-exports=java.base/sun.nio.ch=ALL-UNNAMED"/>
+            </jvm-options>
+        </jvm>
+    </jvms>
+    <servers>
+    <server name="server-one" group="main-server-group">
+         <jvm name="default1">
+          <heap size="64m" max-size="1g"/>
+            <jvm-options>
+                <option value="-server"/>
+                <option value="-XX:MetaspaceSize=96m"/>
+                <option value="-XX:MaxMetaspaceSize=256m"/>
+                <option value="--add-exports=java.base/sun.nio.ch=ALL-UNNAMED"/>
+            </jvm-options>
+        </jvm>
+
+        </server>
+
+
+
+./domain.sh --domain-config=DC-domain.xml --host-config=DC-host-master.xml -Djboss.domain.base.dir=/ql/jboss-eap-7.2/domain_dc 
+./add-user.sh -a -u admin -p redhat@1 -sc /ql/jboss-eap-7.2/domain_dc/configuration/ -up mgmt-users.properties -gp mgmt-groups.properties 
+
+
+
+
+
+
+
+/ql/jboss-eap-7.2/instance1_domain/configuration
+
+/ql/jboss-eap-7.2/bin/add-user.sh -a -u admin -p redhat@1 -sc /ql/jboss-eap-7.2/instance1_domain/configuration/ -up mgmt-users.properties -gp mgmt-groups.properties
+
+/ql/jboss-eap-7.2/bin/domain.sh --domain-config=Disputeexpert_domain.xml --host-config=Disputeexpert_host-slave.xml -Djboss.domain.base.dir=/ql/jboss-eap-7.2/instance1_domain 
+
+
+[root@localhost configuration]# cat /ql/jboss-eap-7.2/bin/Start-jb.sh
+#!/bin/sh
+
+/ql/jboss-eap-7.2/bin/domain.sh --domain-config=Disputeexpert_domain.xml --host-config=Disputeexpert_host-slave.xml -Djboss.domain.base.dir=/ql/jboss-eap-7.2/instance1_domain
+
+
+#!/bin/sh
+
+ps -ef |grep java |grep '/ql/jboss-eap-7.2/domain_dc' |awk -F' ' '{print $2 " " $3}'
+kill -9 `ps -ef |grep java |grep '/ql/jboss-eap-7.2/domain_dc' |awk -F' ' '{print $2 " " $3}'`
+
+
+
+[root@localhost configuration]# cat /ql/jboss-eap-7.2/bin/Stop-jb.sh
+#!/bin/sh
+
+#/ql/jboss-eap-7.2/instance1_domain
+kill -9 `ps -ef |grep java |grep '/ql/jboss-eap-7.2/instance1_domain' |awk -F' ' '{print $2 " " $3}'`
+
+
