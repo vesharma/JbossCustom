@@ -1,0 +1,72 @@
+---
+ - hosts: localhost
+   become: true
+   gather_facts: true
+
+   vars:
+     disk_usage: ""
+     disk_usage_ratio: ""
+     disk_usage_s: ""
+     disk_total_s: ""
+     disk_usage_ratio_s: ""
+     disk_limit_ratio_s: ""
+
+   tasks:
+   - name: collect only fact about hardware
+     setup:
+        gather_subset:
+        - hardware
+
+   - name: it is only showing disks list
+     debug:
+       var: hostvars[inventory_hostname].ansible_devices.keys() | list
+
+   - name: it is showing all properites of disk
+     debug:
+       var: hostvars[inventory_hostname].ansible_devices
+
+   - name: search specific disk info
+     debug:
+       var: hostvars[inventory_hostname].ansible_devices.keys() |  map('regex_search', 'sd.*') | select('string') | list
+
+   - name: scan bus for new disk disk
+     shell: for d in /sys/class/scsi_device/* ; do echo 1 > $d/device/rescan; done
+
+   - name: check disk size
+     debug:
+         msg: "{{ ansible_devices[item].size }}"
+     loop: "{{ ansible_devices.keys()|list|sort }}"
+
+   - set_fact:
+        mount_all: "{{ mount_all + [{'host':ansible_host,'dev':item.device,'mount':item.mount,'free':(((item.size_available/1024)/1024)/1024)|round(2,'common'),'total':(((item.size_total/1024)/1024)/1024)|round(2,'common')}] }}"
+     register: mount_all
+     when: (item.size_total - item.size_available) > (item.size_total|float * 0.85)
+     with_items: "{{ ansible_mounts | list }}"
+
+   - name: Stato dei dischi > 85%
+     debug:
+         msg: "{{ mount_all }} "
+
+   - set_fact:
+       mount: "{{ ansible_mounts | first }}"
+
+   - set_fact: disk_usage="{{ mount.size_total - mount.size_available }}"
+   - set_fact: disk_usage_ratio="{{ disk_usage|float / mount.size_total }}"
+   - set_fact: disk_usage_s="{{ (disk_usage|float / 1000000000) | round(1, 'common') }}GB"
+   - set_fact: disk_total_s="{{ (mount.size_total / 1000000000) | round(1, 'common') }}GB"
+   - set_fact: disk_usage_ratio_s="{{ 100 * (disk_usage_ratio|float) | round(1, 'common') }}%"
+   - set_fact: disk_limit_ratio_s="{{ (100 * disk_limit|float) |round }}%"
+
+   - debug:
+       msg: "disk usage {{ disk_usage_s }} of total {{ disk_total_s }} ({{ disk_usage_ratio_s }}) (should be within limit {{ disk_limit_ratio_s }})"
+
+   - name:
+     assert:
+       that: ( (disk_usage|float)/mount.size_total ) < disk_limit|float
+       msg: "Disk usage {{ disk_usage_ratio_s }} exceeds {{ disk_limit_ratio_s }}"
+     tags: disk
+     any_errors_fatal: true
+
+  #- name: indicate disks okay to statuscake
+    #local_action: command /usr/bin/wget 'https://push.statuscake.com/?PK=abcdefghi&TestID=123456&time=0'
+  #  run_once: true
