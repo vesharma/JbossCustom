@@ -1,0 +1,30 @@
+---
+ - hosts: localhost
+   become: true
+   gather_facts: true
+
+   tasks:
+   - name: collect only fact about hardware
+     setup:
+        gather_subset:
+        - hardware
+
+   - name: it is only showing disks list
+     debug:
+       var: hostvars[inventory_hostname].ansible_devices.keys() | list
+
+   - name: it is showing all properites of disk
+     debug:
+       var: hostvars[inventory_hostname].ansible_devices
+
+   - name: search specific disk info
+     debug:
+       var: hostvars[inventory_hostname].ansible_devices.keys() |  map('regex_search', 'sd.*') | select('string') | list
+
+   - name: scan bus for new disk disk
+     shell: for d in /sys/class/scsi_device/* ; do echo 1 > $d/device/rescan; done
+
+   - name: check disk size
+     debug:
+         msg: "{{ ansible_devices[item].size }}"
+     loop: "{{ ansible_devices.keys()|list|sort }}"
